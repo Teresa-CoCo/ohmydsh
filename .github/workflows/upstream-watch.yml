@@ -1,0 +1,110 @@
+name: Upstream watch
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: npm dist-tag channel to track
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - next
+          - alpha
+      apply:
+        description: Apply the update and open a PR when a newer version exists
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: watch upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHANNEL: ${{ inputs.channel || 'latest' }}
+      APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check upstream versions
+        id: check
+        run: |
+          set -euo pipefail
+          node scripts/upstream-sync.mjs --check --json --channel "$CHANNEL" > upstream-check.json
+          node -e 'const check = require("./upstream-check.json"); const fs = require("node:fs"); const lines = ["changed=" + check.changed, "version=" + (check.available.dsh.version || ""), "tui=" + (check.available.tuiPlugin.version || "")]; fs.appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n");'
+
+      - name: Apply upstream update
+        id: apply
+        if: steps.check.outputs.changed == 'true' && env.APPLY == 'true'
+        run: |
+          set +e
+          node scripts/upstream-sync.mjs --apply --json --channel "$CHANNEL" > upstream-apply.json 2> upstream-apply.err
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" != "0" ]; then exit 0; fi
+
+      - name: Open pull request
+        if: steps.apply.outputs.code == '0'
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p 'require("./upstream-apply.json").pin.dsh')
+          TUI=$(node -p 'require("./upstream-apply.json").pin.tuiPlugin')
+          BRANCH="chore/upstream-$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add upstream.json
+          git commit -m "chore(upstream): dsh $VERSION" -m "Tracks @deepseek-ai/dsh@$VERSION with @deepseek-harness-tui/dsh-tui@$TUI. Composition verification passed and a compat row was appended to upstream.json."
+          git push --force origin "$BRANCH"
+          gh label create upstream --force --color 0e8a16 --description "Upstream dependency tracking" || true
+          if gh pr view "$BRANCH" --json number -q .number > /dev/null 2>&1; then
+            echo "a pull request for $BRANCH already exists"
+          else
+            gh pr create --fill --label upstream
+          fi
+
+      - name: Open upstream-break issue
+        if: steps.apply.outputs.code != '' && steps.apply.outputs.code != '0'
+        run: |
+          set -euo pipefail
+          TITLE=$(sed -n 's/^title: //p' upstream-apply.err | head -n 1)
+          VERSION=$(node -p 'try { require("./upstream-apply.json").available.dsh.version || "" } catch { "" }')
+          if [ -z "$TITLE" ]; then TITLE="chore(upstream): dsh $VERSION failed composition verification"; fi
+          awk '/^--- suggested issue ---$/ { section="title"; next } /^--- end suggested issue ---$/ { section="" } section=="title" && /^body:$/ { section="body"; next } section=="body"' upstream-apply.err > upstream-issue.md
+          if [ ! -s upstream-issue.md ]; then
+            {
+              echo "The upstream sync failed before composition verification completed."
+              echo
+              echo '```text'
+              tail -n 200 upstream-apply.err
+              echo '```'
+            } > upstream-issue.md
+          fi
+          gh label create upstream-break --force --color b60205 --description "Upstream update breaks ohmydsh" || true
+          OPEN=$(gh issue list --state open --label upstream-break --limit 100 --json title -q '.[].title' | grep -Fxc "$TITLE" || true)
+          if [ "$OPEN" = "0" ]; then
+            gh issue create --title "$TITLE" --body-file upstream-issue.md --label upstream-break
+          else
+            echo "an issue for this breakage is already open: $TITLE"
+          fi
+          exit 1

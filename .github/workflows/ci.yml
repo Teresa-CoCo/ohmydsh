@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19', '24', '26']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install pnpm
+        run: npm install --global pnpm@12.6.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: node --test
+
+  composition:
+    name: composition
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify composed dsh profiles (tui + desktop)
+        run: node scripts/verify-composition.mjs --profile all
+
+  workflows:
+    name: workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate workflow YAML structure
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync } from "node:fs";
+
+          const failures = [];
+          const files = readdirSync(".github/workflows").filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
+          if (files.length === 0) failures.push(".github/workflows: no workflow files found");
+
+          for (const file of files) {
+            const path = ".github/workflows/" + file;
+            const text = readFileSync(path, "utf8");
+            const problems = [];
+            if (/\t/.test(text)) problems.push("tab character");
+            if (/\r/.test(text)) problems.push("CRLF line ending");
+            if (!/^name: \S/m.test(text)) problems.push("missing top-level name:");
+            if (!/^on:/m.test(text)) problems.push("missing top-level on:");
+            if (!/^jobs:/m.test(text)) problems.push("missing top-level jobs:");
+
+            const known = new Set(["name", "on", "permissions", "concurrency", "env", "defaults", "jobs"]);
+            const lines = text.split("\n");
+            let blockIndent = -1;
+            for (const [index, line] of lines.entries()) {
+              if (blockIndent >= 0 && (line.trim() === "" || (line.length - line.trimStart().length) > blockIndent)) continue;
+              blockIndent = -1;
+              if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
+              const indent = line.length - line.trimStart().length;
+              const topLevel = /^([A-Za-z0-9_-]+):/.exec(line);
+              if (topLevel && !known.has(topLevel[1])) problems.push("line " + (index + 1) + ": unknown top-level key " + topLevel[1]);
+              if (indent % 2 !== 0 && !topLevel) problems.push("line " + (index + 1) + ": odd indentation " + indent);
+              const value = line.trimEnd();
+              if (/(^|[ \t])([|>])[+-]?$/.test(value)) blockIndent = indent;
+            }
+            if (problems.length > 0) failures.push(path + ": " + problems.join("; "));
+          }
+
+          if (failures.length > 0) {
+            for (const failure of failures) console.error("FAIL " + failure);
+            process.exit(1);
+          }
+          console.log("validated " + files.length + " workflow file(s)");
+          NODE
+      - name: Validate upstream.json schema
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const problems = [];
+          const fail = (message) => problems.push(message);
+          const pin = JSON.parse(readFileSync("upstream.json", "utf8"));
+
+          if (pin.schemaVersion !== 1) fail("schemaVersion must be 1");
+          if (typeof pin.repository !== "string") fail("repository must be a string");
+          if (pin.upstream === undefined || typeof pin.upstream !== "object") fail("upstream must be an object");
+          for (const key of ["repository", "npmPackage", "channel", "version", "publishedAt", "resolvedAt"]) {
+            if (typeof pin.upstream?.[key] !== "string") fail("upstream." + key + " must be a string");
+          }
+          if (!["latest", "next", "alpha"].includes(pin.upstream?.channel)) fail("upstream.channel must be latest, next, or alpha");
+          if (!/^\d+\.\d+\.\d+/.test(pin.upstream?.version ?? "")) fail("upstream.version must be semver-ish");
+          if (typeof pin.tuiPlugin?.npmPackage !== "string") fail("tuiPlugin.npmPackage must be a string");
+          if (!/^\d+\.\d+\.\d+/.test(pin.tuiPlugin?.version ?? "")) fail("tuiPlugin.version must be semver-ish");
+          if (typeof pin.profiles?.tui !== "string") fail("profiles.tui must be a string");
+          if (typeof pin.profiles?.desktop !== "string") fail("profiles.desktop must be a string");
+          if (!Array.isArray(pin.compat?.verified)) {
+            fail("compat.verified must be an array");
+          } else {
+            if (pin.compat.verified.length > 20) fail("compat.verified must hold at most 20 rows");
+            for (const [index, row] of pin.compat.verified.entries()) {
+              if (typeof row?.dsh !== "string") fail("compat.verified[" + index + "].dsh must be a string");
+              if (typeof row?.tuiPlugin !== "string") fail("compat.verified[" + index + "].tuiPlugin must be a string");
+              if (typeof row?.verifiedAt !== "string") fail("compat.verified[" + index + "].verifiedAt must be a string");
+              if (!Array.isArray(row?.profiles) || row.profiles.length === 0) fail("compat.verified[" + index + "].profiles must be a non-empty array");
+            }
+          }
+
+          if (problems.length > 0) {
+            for (const problem of problems) console.error("FAIL upstream.json: " + problem);
+            process.exit(1);
+          }
+          console.log("validated upstream.json (" + (Array.isArray(pin.compat?.verified) ? pin.compat.verified.length : 0) + " compat row(s))");
+          NODE
