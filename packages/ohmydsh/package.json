@@ -52,8 +52,7 @@
     "bundle": {
       "patch": [
         "./cordis.patch.yml",
-        "./presets/omp-build.patch.yml",
-        "./presets/omp-plan.patch.yml"
+        "./presets/omp.patch.yml"
       ]
     }
   }

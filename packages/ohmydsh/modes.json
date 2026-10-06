@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "defaultMode": "build",
   "reasoningEffort": "max",
+  "agentPreset": "omp",
   "persona": {
     "prefix": "You are an OMP-style coding agent powered by the {{model}} model.",
     "suffix": "Your working directory is {{cwd}}. Verify your work by running it. Keep answers brief and factual."
@@ -11,8 +12,8 @@
       "id": "plan",
       "label": "Plan",
       "summary": "Read-only investigation that ends in a decision-complete plan.",
-      "description": "Composes the read-only OMP agent preset with a read-only sandbox: edits, writes and shell mutations are unavailable, and risky actions still ask first. Mirrors OMP's plan mode.",
-      "agentPreset": "omp-plan",
+      "description": "Launches in a read-only sandbox: file mutations are unavailable and risky actions still ask first. dsh keeps the tool catalog stable across modes, so the OMP plan preset also carries the plan-mode section; press /plan inside the session to enter it. Mirrors OMP's plan mode.",
+      "planMode": true,
       "permission": {
         "name": "omp-readonly",
         "sandbox": "read-only",
@@ -23,8 +24,8 @@
       "id": "build",
       "label": "Build",
       "summary": "The full OMP coding agent inside the workspace.",
-      "description": "Composes the full OMP agent preset with a workspace-write sandbox: bash and filesystem mutations stay inside the session workspace, and anything risky asks first. This is the default mode.",
-      "agentPreset": "omp-build",
+      "description": "Launches in a workspace-write sandbox: bash and filesystem mutations stay inside the session workspace, and anything risky asks first. This is the default mode.",
+      "planMode": false,
       "permission": {
         "name": "omp-workspace",
         "sandbox": "workspace-write",
@@ -35,8 +36,8 @@
       "id": "yolo",
       "label": "YOLO",
       "summary": "The full OMP coding agent with no confinement and no prompts.",
-      "description": "Composes the full OMP agent preset with danger-full-access and never-ask approval. Mirrors OMP's auto-approve mode; use only in throwaway workspaces.",
-      "agentPreset": "omp-build",
+      "description": "Launches with danger-full-access and never-ask approval. Mirrors OMP's auto-approve mode; use only in throwaway workspaces.",
+      "planMode": false,
       "permission": {
         "name": "omp-full",
         "sandbox": "danger-full-access",

@@ -38,6 +38,7 @@ entry in that list.
   "schemaVersion": 1,
   "defaultMode": "build",
   "reasoningEffort": "max",        // llm-deepseek.reasoningEffort in cordis.patch.yml
+  "agentPreset": "omp",            // @deepseek-ai/dsh-agent-preset config.id of the OMP working mode
   "persona": { "prefix": "…", "suffix": "…" },   // system-prompt row values
   "modes": [
     {
@@ -45,7 +46,7 @@ entry in that list.
       "label": "Build",            // display
       "summary": "…",              // one line for `ohmydsh modes`
       "description": "…",          // paragraph
-      "agentPreset": "omp-build",  // @deepseek-ai/dsh-agent-preset config.id
+      "planMode": false,           // true: print the in-session /plan hint on launch
       "permission": { "name": "omp-workspace", "sandbox": "workspace-write", "approval": "ask" }
     }
   ]
@@ -58,7 +59,7 @@ Invariants (tested):
 2. `sandbox` ∈ {`read-only`, `workspace-write`, `danger-full-access`}, `approval` ∈ {`ask`, `never`};
 3. `defaultMode` names an existing mode;
 4. the `permission` row in `cordis.patch.yml` declares exactly these presets with exactly these bundles, and `defaultPreset` equals the default mode's `permission.name`;
-5. every `agentPreset` appears as a `config.id` of an inserted `@deepseek-ai/dsh-agent-preset` row across the bundle patch list.
+5. the top-level `agentPreset` appears as a `config.id` of an inserted `@deepseek-ai/dsh-agent-preset` row in the bundle patch list.
 
 `upstream.json`
 
