@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/Teresa-CoCo/ohmydsh",
+  "upstream": {
+    "repository": "deepseek-ai/deepseek-harness",
+    "npmPackage": "@deepseek-ai/dsh",
+    "channel": "latest",
+    "version": "0.2.0-rc.2",
+    "publishedAt": "2026-10-06T06:30:20Z",
+    "resolvedAt": "2026-10-06T00:00:00Z"
+  },
+  "tuiPlugin": {
+    "npmPackage": "@deepseek-harness-tui/dsh-tui",
+    "version": "0.13.0"
+  },
+  "profiles": {
+    "tui": "ohmydsh-tui",
+    "desktop": "ohmydsh-desktop"
+  },
+  "compat": {
+    "verified": [
+      {
+        "dsh": "0.2.0-rc.2",
+        "tuiPlugin": "0.13.0",
+        "verifiedAt": "2026-10-06T00:00:00Z",
+        "profiles": [
+          "tui",
+          "desktop"
+        ]
+      }
+    ]
+  }
+}

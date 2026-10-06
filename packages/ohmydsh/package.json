@@ -1,0 +1,60 @@
+{
+  "name": "ohmydsh",
+  "version": "0.1.0",
+  "description": "OMP-flavoured DeepSeek Harness (dsh) distribution: TUI by default, a desktop surface over the same backend, preset OMP working modes, and upstream tracking.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "bin": {
+    "ohmydsh": "./bin/ohmydsh.js"
+  },
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./cli": "./src/cli.js",
+    "./modes.json": "./modes.json",
+    "./upstream.json": "./upstream.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./presets/*": "./presets/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "presets",
+    "cordis.patch.yml",
+    "modes.json",
+    "upstream.json",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek",
+    "deepseek-harness",
+    "ohmydsh",
+    "omp",
+    "cordis",
+    "tui",
+    "desktop"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Teresa-CoCo/ohmydsh.git",
+    "directory": "packages/ohmydsh"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml",
+        "./presets/omp-build.patch.yml",
+        "./presets/omp-plan.patch.yml"
+      ]
+    }
+  }
+}

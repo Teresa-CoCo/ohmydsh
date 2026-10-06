@@ -1,0 +1,25 @@
+{
+  "name": "ohmydsh",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OMP-flavoured DeepSeek Harness (dsh) distribution: terminal-first TUI, a desktop surface sharing one backend, preset OMP working modes, and CI that tracks upstream dsh.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc -p tsconfig.json",
+    "verify": "node scripts/verify-composition.mjs",
+    "verify:tui": "node scripts/verify-composition.mjs --profile tui",
+    "verify:desktop": "node scripts/verify-composition.mjs --profile desktop",
+    "upstream:check": "node scripts/upstream-sync.mjs --check",
+    "upstream:apply": "node scripts/upstream-sync.mjs --apply"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}
