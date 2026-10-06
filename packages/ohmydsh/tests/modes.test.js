@@ -1,3 +1,8 @@
+// @ts-nocheck -- the hand-rolled YAML-subset reader below is intentionally
+// untyped: typing a ~110-line subset parser would add more annotation noise
+// than signal, and every assertion here is a runtime check on parsed values.
+// The other test files in this package ARE type-checked by `pnpm typecheck`.
+//
 // Tests for the ohmydsh OMP layer: `modes.json` is the single source of truth,
 // and the bundle patch files must agree with it.
 //
