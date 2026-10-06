@@ -19,7 +19,7 @@
     "upstream:apply": "node scripts/upstream-sync.mjs --apply"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
+    "@types/node": "^26.6.4",
     "typescript": "^5.9.3"
   }
 }
