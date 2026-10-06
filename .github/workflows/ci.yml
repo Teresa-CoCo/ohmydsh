@@ -20,8 +20,8 @@ jobs:
       matrix:
         node: ['22.19', '24', '26']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
       - name: Install pnpm
@@ -38,10 +38,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
+      - name: Install pnpm
+        run: |
+          npm install --global pnpm@12.6.0
+          pnpm --version
       - name: Verify composed dsh profiles (tui + desktop)
         run: node scripts/verify-composition.mjs --profile all
 
@@ -49,8 +53,8 @@ jobs:
     name: workflows
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
       - name: Validate workflow YAML structure
