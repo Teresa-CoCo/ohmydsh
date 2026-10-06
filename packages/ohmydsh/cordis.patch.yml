@@ -1,0 +1,61 @@
+# The ohmydsh layer: the OMP persona, reasoning effort, and permission presets
+# applied to every ohmydsh profile after dsh-base and the surface bundle (TUI or
+# web) have composed.
+#
+# This is a bundle patch: a top-level sequence of entries that target existing
+# rows by id. A patch entry replaces the targeted row's whole `config` (there is
+# no deep merge), so every entry below restates each key it owns; keys left out
+# fall back to the plugin schema's own defaults. Values come from `modes.json`,
+# the single source of truth for OMP working modes.
+
+# The deployment persona. `{{model}}` and `{{cwd}}` are resolved by the
+# system-prompt plugin at runtime.
+#
+# Key naming note: on dsh <= 0.1.2 this row took a single `persona` key; the
+# pinned 0.2.x splits it into `personaPrefix` / `personaSuffix`.
+- id: system-prompt
+  config:
+    personaPrefix: 'You are an OMP-style coding agent powered by the {{model}} model.'
+    personaSuffix: 'Your working directory is {{cwd}}. Verify your work by running it. Keep answers brief and factual.'
+
+# Raise DeepSeek native reasoning to the OMP level (`reasoningEffort` in
+# modes.json).
+#
+# Schema provenance: the installed adapter's Config
+# (@deepseek-ai/dsh-llm-deepseek -> `deepSeekConfigFields`, consumed by
+# @deepseek-ai/dsh-llm-deepseek-api-key). Only `thinking` and `reasoningEffort`
+# lack a usable schema default — both are `.volatile()` fields with no
+# `.default()` — so a patch that replaces the row's config must restate them or
+# the adapter silently falls back to `high` effort. Every other key in the
+# schema (baseURL, maxTokens, defaultContextWindow, models, stream/file
+# timeouts and limits, retryPolicy, plus `apiKeyEnv` on the api-key wrapper)
+# has a working schema default and is therefore omitted: because a patch
+# replaces the whole config rather than merging, omission is exactly how those
+# defaults get applied. `thinking: enabled` is required alongside a non-off
+# effort: the adapter rejects `reasoningEffort` other than `off` when thinking
+# is disabled.
+- id: llm-deepseek
+  config:
+    thinking: enabled
+    reasoningEffort: max
+
+# OMP permission presets, keyed by the `permission.name` of each modes.json
+# mode; `defaultPreset` is the permission name of modes.json `defaultMode`.
+#
+# `custom` and `auto` are reserved by @deepseek-ai/dsh-permission-presets
+# (`custom` is the derived "composed defaults match no table entry" state and
+# `auto` is the live auto-admit integration) and must never appear as keys in
+# `presets`.
+- id: permission
+  config:
+    presets:
+      omp-readonly:
+        sandbox: read-only
+        approval: ask
+      omp-workspace:
+        sandbox: workspace-write
+        approval: ask
+      omp-full:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: omp-workspace
