@@ -67,9 +67,9 @@ dsh 补丁会整体替换目标行的配置，该叠加层会重新声明全部�
 | `ohmydsh` / `ohmydsh tui` | 在 `ohmydsh-tui` profile 上启动 TUI 界面。这是默认命令。 |
 | `ohmydsh desktop` / `ohmydsh web` | 在 `ohmydsh-desktop` profile 上启动桌面（Web）界面。 |
 | `ohmydsh modes [--json]` | 打印 `modes.json` 中的 OMP 模式（`--json` 输出机器可读格式）。 |
-| `ohmydsh doctor [--json]` | 打印诊断报告（`--json` 输出机器可读格式）。 |
-| `ohmydsh update` | 更新命令。其确切步骤未在 `docs/contracts.md` 中固定，此处留作未指定。 |
-| `ohmydsh version` | 打印版本。 |
+| `ohmydsh doctor [--json]` | 诊断报告（`--json` 输出机器可读格式）。检查 Node 版本范围、`upstream.json`、TUI 插件固定版本、`modes.json`、`dsh` 可执行文件及其 `--version` 与固定版本是否一致、两个 profile 是否已登记我们的 bundle，以及对每个已存在的 profile 执行 `dsh --profile <p> --dump-config`（退出码 0、stderr 为空）。它只报告、不修复；任一检查失败时退出码为 1。 |
+| `ohmydsh update` | 把两个 profile 刷新到固定的 bundle 版本：先执行仍然缺失的 bootstrap 步骤，然后执行 `dsh plugin --profile <p> update`，并重新添加固定的 bundle。固定版本提升发布后，已有安装即通过该命令跟上，无需手动 bootstrap。 |
+| `ohmydsh version` | 打印 ohmydsh 版本，以及固定的 dsh 与 TUI 插件版本。 |
 | `ohmydsh help` | 打印用法。 |
 
 ### 参数
@@ -78,22 +78,21 @@ dsh 补丁会整体替换目标行的配置，该叠加层会重新声明全部�
 |---|---|
 | `--mode <id>` | 以生成的 `--patch` 叠加层形式，把指定的 OMP 模式应用在 profile 之上。 |
 | `--profile <name>` | 使用指定的 dsh profile，而不是界面默认的 profile（TUI 为 `ohmydsh-tui`，桌面为 `ohmydsh-desktop`）。 |
-| `--dsh <path>` | 使用指定的 `dsh` CLI（替代 `DSH_REAL`）。 |
-| `--dry-run` | 不执行，只报告解析出的计划。其确切输出格式未在 `docs/contracts.md` 中固定。 |
-| `--no-bootstrap` | 跳过 profile bootstrap。 |
-| `--json` | 为支持结构化输出的命令（`modes`、`doctor`）输出机器可读格式。 |
+| `--dsh <path>` | 使用指定的 `dsh` CLI。优先级：`--dsh` > `DSH_REAL` > `PATH` 中的 `dsh`。 |
+| `--dry-run` | 只打印本次调用将执行的每条命令（形如 `ohmydsh: would run: <argv>`），不执行任何操作。 |
+| `--no-bootstrap` | profile 缺失时直接失败，不进行初始化。 |
+| `--json` | 为 `modes` 与 `doctor` 输出机器可读格式。 |
 
 ### 环境变量
 
 | 变量 | 作用 |
 |---|---|
-| `OHMYDSH_HOME` | 启动器自身的 home 目录。其默认值与目录结构未在 `docs/contracts.md` 中固定。 |
-| `DSH_HOME` | dsh home；默认为 `~/.dsh`，profile 位于 `$DSH_HOME/profiles/<name>`。 |
-| `DSH_REAL` | 当无法从 `PATH` 解析 `dsh` CLI 时，指定其路径。 |
+| `OHMYDSH_HOME` | 覆盖 `modes.json` 与 `upstream.json` 的读取根目录；默认取包含本包的代码检出根目录，已安装副本则取包根目录。 |
+| `DSH_HOME` | dsh home；默认为 `~/.dsh`，profile 位于 `$DSH_HOME/profiles/<name>`。ohmydsh 只读取它，不会直接写入——它由 `dsh` 拥有。 |
+| `DSH_REAL` | 当未提供 `--dsh` 时使用的 `dsh` CLI 路径。 |
 
-以上命令、参数与环境变量构成启动器对外接口的完整集合。凡是 `docs/contracts.md`
-未固定的行为——`doctor` 具体检查什么、`update` 执行哪些步骤、`--dry-run` 打印何种
-格式，以及参数与环境变量之间的优先级——本文档均明确标注为未指定，不作猜测。
+退出码：`0` 成功，`1` 检查失败或 bootstrap 失败，`2` 用法错误。启动界面时透传 dsh
+进程自身的退出码。
 
 ## 上游跟踪
 

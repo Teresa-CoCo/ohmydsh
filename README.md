@@ -78,9 +78,9 @@ session; it is backed by the read-only sandbox.
 | `ohmydsh` / `ohmydsh tui` | Launch the TUI surface on the `ohmydsh-tui` profile. This is the default command. |
 | `ohmydsh desktop` / `ohmydsh web` | Launch the desktop (web) surface on the `ohmydsh-desktop` profile. |
 | `ohmydsh modes [--json]` | Print the OMP modes from `modes.json` (`--json` for machine-readable output). |
-| `ohmydsh doctor [--json]` | Print a diagnostic report (`--json` for machine-readable output). |
-| `ohmydsh update` | Update command. Its exact steps are not fixed in `docs/contracts.md` and are left unspecified here. |
-| `ohmydsh version` | Print the version. |
+| `ohmydsh doctor [--json]` | Diagnostic report (`--json` for machine-readable output). It checks the Node range, `upstream.json`, the TUI-plugin pin, `modes.json`, the `dsh` binary and its `--version` against the pin, whether both profiles list our bundle, and `dsh --profile <p> --dump-config` (exit 0, empty stderr) for every profile that exists. It reports, never repairs, and exits 1 when a check fails. |
+| `ohmydsh update` | Refresh both profiles to the pinned bundles: run the still-missing bootstrap steps, then `dsh plugin --profile <p> update` and re-add the pinned bundles. This is how a released pin bump reaches an existing install without a manual bootstrap. |
+| `ohmydsh version` | Print the ohmydsh version plus the pinned dsh and TUI-plugin versions. |
 | `ohmydsh help` | Print usage. |
 
 ### Flags
@@ -89,24 +89,21 @@ session; it is backed by the read-only sandbox.
 |---|---|
 | `--mode <id>` | Apply the named OMP mode as a generated `--patch` overlay on top of the profile. |
 | `--profile <name>` | Use a specific dsh profile instead of the surface's default (`ohmydsh-tui` for TUI, `ohmydsh-desktop` for desktop). |
-| `--dsh <path>` | Use a specific `dsh` CLI (alternative to `DSH_REAL`). |
-| `--dry-run` | Do not execute; report the resolved plan. Its exact output format is not fixed in `docs/contracts.md`. |
-| `--no-bootstrap` | Skip profile bootstrap. |
-| `--json` | Machine-readable output for commands that support it (`modes`, `doctor`). |
+| `--dsh <path>` | Use a specific `dsh` CLI. Precedence: `--dsh`, then `DSH_REAL`, then `dsh` on `PATH`. |
+| `--dry-run` | Print every command the invocation would run (as `ohmydsh: would run: <argv>` lines) and execute nothing. |
+| `--no-bootstrap` | Fail instead of initialising a missing profile. |
+| `--json` | Machine-readable output for `modes` and `doctor`. |
 
 ### Environment
 
 | Variable | What it does |
 |---|---|
-| `OHMYDSH_HOME` | The launcher's own home. Its default and layout are not fixed in `docs/contracts.md`. |
-| `DSH_HOME` | The dsh home; defaults to `~/.dsh`, with profiles at `$DSH_HOME/profiles/<name>`. |
-| `DSH_REAL` | Path to the `dsh` CLI to use when it cannot be resolved from `PATH`. |
+| `OHMYDSH_HOME` | Override the read-root for `modes.json` and `upstream.json`; defaults to the checkout that contains the package, or the package root for an installed copy. |
+| `DSH_HOME` | The dsh home; defaults to `~/.dsh`, with profiles at `$DSH_HOME/profiles/<name>`. ohmydsh reads it but never writes it directly — `dsh` owns it. |
+| `DSH_REAL` | Path to the `dsh` CLI, used when `--dsh` is absent. |
 
-The commands, flags and variables above are the complete launcher surface. Where
-`docs/contracts.md` does not fix a behaviour — what exactly `doctor` checks, the
-steps `update` performs, the format `--dry-run` prints, and the precedence
-between a flag and its environment variable — this document leaves it
-unspecified rather than guessing.
+Exit codes: `0` success, `1` a failed check or a failed bootstrap, `2` a usage
+error. Booting a surface propagates the dsh process's own exit code.
 
 ## Upstream tracking
 

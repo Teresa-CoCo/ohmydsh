@@ -113,6 +113,27 @@ node scripts/upstream-sync.mjs --check --json
 The per-profile composition forms are `pnpm verify:tui` and `pnpm verify:desktop`
 (equivalently `node scripts/verify-composition.mjs --profile tui|desktop`).
 
+## CI and release pipelines
+
+Three workflows own the automation; all of them use only `actions/checkout` and
+`actions/setup-node`.
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `ci.yml` | every push and pull request | `test` (Node 22.19 / 24 / 26: `pnpm install --frozen-lockfile`, `pnpm typecheck`, `node --test`), `composition` (`node scripts/verify-composition.mjs --profile all`), `workflows` (structural validation of every workflow file and of the `upstream.json` schema) |
+| `upstream-watch.yml` | daily at 05:23 UTC, plus manual dispatch with `channel` and `apply` inputs | `--check`; when a newer release exists it runs `--apply`, commits the new pin on `chore/upstream-<version>`, pushes and opens a PR labelled `upstream`; when verification fails it opens an `upstream-break` issue carrying the captured diagnostics |
+| `release.yml` | pushes of `v*` tags | typecheck, unit tests and composition verification, then `npm publish --provenance --access public` from `packages/ohmydsh` and a GitHub release whose notes come from the matching `CHANGELOG.md` section |
+
+Repository setup this needs:
+
+- secret `NPM_TOKEN` — an npm automation token allowed to publish `ohmydsh`.
+  Without it the release job fails at the publish step; nothing else breaks.
+- `upstream-watch` writes branches, PRs and issues with the default
+  `GITHUB_TOKEN` (`contents: write`, `pull-requests: write`, `issues: write`),
+  and creates the `upstream` / `upstream-break` labels when they are missing.
+- `release.yml` requests `id-token: write` for npm provenance attestation, and
+  the tag must match `packages/ohmydsh/package.json`'s `version`.
+
 ## When upstream renames a row
 
 A dsh release can rename plugin rows, and our patches target rows by id. If a
